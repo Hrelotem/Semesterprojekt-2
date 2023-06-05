@@ -117,8 +117,11 @@ class EKGView(Frame):
         self.showPatientName = tk.Label(self, font=("Helvetica bold", 30), textvariable=self.patientName)
         self.showPatientName.grid(row=0, column=0, pady = 70, sticky=S, columnspan=2)
 
-        self.EKG = tk.Label(self, text = "GRAF", font=("Segoe UI",150))
-        self.EKG.grid(row=1, column=0, rowspan=2)
+        #self.EKG = tk.Label(self, text = "GRAF", font=("Segoe UI",150))
+        #self.EKG.grid(row=1, column=0, rowspan=2)
+
+        self.EKGFrame = Frame(self, height=300, width = 500, bg="white")
+        self.EKGFrame.grid(row=1, column=0, rowspan=2)
 
         self.HRFrame = Frame(self, height = 100, width = 200, highlightbackground = "gray", highlightthickness = 2)
         self.HRFrame.grid(row=1, column=1)
