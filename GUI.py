@@ -3,6 +3,15 @@ import tkinter as tk
 from tkinter import *
 import time
 import datetime as dt
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import matplotlib
+matplotlib.use("Agg")
+from random import randrange
+from threading import Thread
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
+
 
 #Vise målinger fra EKG-apparat - hvad vil det sige? Er det bare i grafen?
 #Vise dynamisk graf med EKG-signalet
@@ -117,11 +126,8 @@ class EKGView(Frame):
         self.showPatientName = tk.Label(self, font=("Helvetica bold", 30), textvariable=self.patientName)
         self.showPatientName.grid(row=0, column=0, pady = 70, sticky=S, columnspan=2)
 
-        #self.EKG = tk.Label(self, text = "GRAF", font=("Segoe UI",150))
-        #self.EKG.grid(row=1, column=0, rowspan=2)
-
-        self.EKGFrame = Frame(self, height=300, width = 500, bg="white")
-        self.EKGFrame.grid(row=1, column=0, rowspan=2)
+        self.EKG = tk.Label(self, text = "EKG graf", font=("Segoe UI",30))
+        self.EKG.grid(row=0  , column=0, rowspan=2)
 
         self.HRFrame = Frame(self, height = 100, width = 200, highlightbackground = "gray", highlightthickness = 2)
         self.HRFrame.grid(row=1, column=1)
@@ -136,6 +142,48 @@ class EKGView(Frame):
 
         self.button = tk.Button(self, text="Se data for ny patient", bg="white", font=("Segoe UI",14))
         self.button.grid(row=2, column=1, ipadx=15, ipady=5)
+
+        #self.EKGFrame = Frame(self, height=300, width = 500, bg="white")
+        #self.EKGFrame.grid(row=1, column=0, rowspan=2)
+        self.EKG_Graph= FigureCanvasTkAgg(fig, self)
+        self.EKG_Graph.get_tk_widget().place(x=70, y=200, width = 500, height = 300)   
+
+fig = plt.figure()
+ax1 = fig.add_subplot(1,1,1)
+
+
+def FileWriter():
+    f=open("C:\\Users\\Alexander\\OneDrive\\Skrivebord\\IT sem 2\\IT-Semester-2-projekt\\UpdatingSample.txt",'a')
+    i=0
+    while True:
+        i+=1
+        j=randrange(10)
+        data = f.write(str(i)+','+str(j)+'\n')
+        print("wrote data")
+        time.sleep(1)
+        f.flush()
+
+
+def animate(i):
+    pullData = open("C:\\Users\\Alexander\\OneDrive\\Skrivebord\\IT sem 2\\IT-Semester-2-projekt\\UpdatingSample.txt","r").read()
+    dataArray = pullData.split('\n')
+    xar = []
+    yar = []
+    for eachLine in dataArray:
+        if len(eachLine)>1:
+            x,y = eachLine.split(',')
+            xar.append(int(x))
+            yar.append(int(y))
+    ax1.clear()
+    ax1.set_title("EKG")
+    ax1.set_ylabel("y-akse")
+    ax1.set_xlabel("x-akse")
+    ax1.grid()
+    ax1.plot(xar,yar)
+    #if len(xar) == 10:  #prøver at fjerne al data efter 10 values
+     #   ax1.clear()
+      #  xar.clear()
+       # yar.clear() 
 
 class Controller:
     def __init__(self, model, view):
@@ -181,6 +229,10 @@ class EKGController:
         self.view.showPage("Patient")
 
 def Main():
+    t1=Thread(target=FileWriter)
+    t1.start()
+    animation.FuncAnimation(fig, animate, interval=1000)
+    print("done")
     model = Model()
     view = View()
     controller = Controller(model, view)
