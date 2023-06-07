@@ -10,6 +10,8 @@ from threading import Thread
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 import serial 
+import numpy as np
+import matplotlib.figure
 
 #Koden under bruges til at tjekke at der er kommunikation mellem arduino og python
 #ser = serial.Serial('COM3',9600,timeout=1)
@@ -38,6 +40,8 @@ import serial
 
 #Vise målinger fra EKG-apparat - hvad vil det sige? Er det bare i grafen?
 #Vise dynamisk graf med EKG-signalet
+
+#Lige nu viser grafen ikke løbende målinger, men det gør den, hvis man går tilbage til de tal, den selv genererer
 
 class Model:
     def __init__(self):
@@ -149,9 +153,6 @@ class EKGView(Frame):
         self.showPatientName = tk.Label(self, font=("Helvetica bold", 30), textvariable=self.patientName)
         self.showPatientName.grid(row=0, column=0, pady = 70, sticky=S, columnspan=2)
 
-        self.EKG = tk.Label(self, text = "EKG graf", font=("Segoe UI",30))
-        self.EKG.grid(row=0  , column=0, rowspan=2)
-
         self.HRFrame = Frame(self, height = 100, width = 200, highlightbackground = "gray", highlightthickness = 2)
         self.HRFrame.grid(row=1, column=1)
 
@@ -166,47 +167,61 @@ class EKGView(Frame):
         self.button = tk.Button(self, text="Se data for ny patient", bg="white", font=("Segoe UI",14))
         self.button.grid(row=2, column=1, ipadx=15, ipady=5)
 
-        #self.EKGFrame = Frame(self, height=300, width = 500, bg="white")
-        #self.EKGFrame.grid(row=1, column=0, rowspan=2)
-        self.EKG_Graph= FigureCanvasTkAgg(fig, self)
-        self.EKG_Graph.get_tk_widget().place(x=70, y=200, width = 500, height = 300)   
+        self.EKGFrame = Frame(self, height=300, width = 500, bg="white")
+        self.EKGFrame.grid(row=1, column=0, rowspan=2)
 
-fig = plt.figure()
-ax1 = fig.add_subplot(1,1,1)
+        #self.fig, self.ax = plt.subplots()
+        self.fig = matplotlib.figure.Figure()
+        self.ax = self.fig.add_subplot()
+        self.canvas = FigureCanvasTkAgg(self.fig, master = self.EKGFrame)
+        self.canvas.get_tk_widget().grid(row=0, column=0)
 
+        self.space = Label(self, text="  ", font=("Segoe UI",30))
+        self.space.grid(row=3, column=0)
+
+        self.plotButton = tk.Button(self, text="Vis EKG", bg="white", font=("Segoe UI",14), command = self.startPlotThread)
+        self.plotButton.grid(row=4, column=0, ipadx=15, ipady=5)
+
+        self.xar = []
+        self.yar = []
+
+    def getData(self):
+        pullData = open("C:\\Users\\Amanda\\OneDrive\\Dokumenter\\Universitet\\UpdatingSample.txt", "r").read()
+        dataArray = pullData.split('\n')
+        for eachLine in dataArray:
+            if len(eachLine)>1:
+                x,y = eachLine.split(',')
+                self.xar.append(int(x))
+                self.yar.append(int(y))
+
+    def startPlotThread(self):
+        t = Thread(target=self.getData())
+        t.start()
+        time.sleep(10)
+        t1=Thread(target=self.plotGraph)
+        t1.start()
+        
+    def plotGraph(self):    
+        while True:
+            self.ax.clear()
+            #x = np.random.randint(0, 10, 10)
+            #y = np.random.randint(0, 10, 10)
+            x = self.xar[:10]
+            y = self.yar[:10]
+            self.ax.plot(x,y)
+            self.canvas.draw()
+            time.sleep(2)
 
 def FileWriter():
-    f=open("C:\\Users\\Alexander\\OneDrive\\Skrivebord\\IT sem 2\\IT-Semester-2-projekt\\UpdatingSample.txt",'a')
+    f=open("C:\\Users\\Amanda\\OneDrive\\Dokumenter\\Universitet\\UpdatingSample.txt", 'a')
     i=0
     while True:
         i+=1
         j=randrange(10)
         data = f.write(str(i)+','+str(j)+'\n')
         print("wrote data")
-        time.sleep(1)
+        time.sleep(2)
         f.flush()
-
-
-def animate(i):
-    pullData = open("C:\\Users\\Alexander\\OneDrive\\Skrivebord\\IT sem 2\\IT-Semester-2-projekt\\UpdatingSample.txt","r").read()
-    dataArray = pullData.split('\n')
-    xar = []
-    yar = []
-    for eachLine in dataArray:
-        if len(eachLine)>1:
-            x,y = eachLine.split(',')
-            xar.append(int(x))
-            yar.append(int(y))
-    ax1.clear()
-    ax1.set_title("EKG")
-    ax1.set_ylabel("y-akse")
-    ax1.set_xlabel("x-akse")
-    ax1.grid()
-    ax1.plot(xar,yar)
-    #if len(xar) == 10:  #prøver at fjerne al data efter 10 values
-     #   ax1.clear()
-      #  xar.clear()
-       # yar.clear() 
 
 class Controller:
     def __init__(self, model, view):
@@ -252,10 +267,9 @@ class EKGController:
         self.view.showPage("Patient")
 
 def Main():
-   # ready()
+    #ready()
     t1=Thread(target=FileWriter)
     t1.start()
-    animation.FuncAnimation(fig, animate, interval=1000)
     print("done")
     model = Model()
     view = View()
