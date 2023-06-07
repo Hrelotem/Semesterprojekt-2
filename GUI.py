@@ -5,13 +5,36 @@ import time
 import datetime as dt
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-import matplotlib
-matplotlib.use("Agg")
 from random import randrange
 from threading import Thread
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+import serial 
 
+#Koden under bruges til at tjekke at der er kommunikation mellem arduino og python
+ser = serial.Serial('COM3',9600,timeout=1)
+
+def ready():
+    notReady = True
+    print("Start")
+    time.sleep(1)
+    while notReady:
+        readyData = ser.read()
+        readyData = readyData.decode()
+        print(readyData)
+        if readyData == "K":    
+            pyReady = "R"
+            pySend = pyReady.encode()
+            ser.write(pySend)
+            notReady = False
+
+def queue():
+    arduino_data = [] # declare a list
+    while True:
+        data = ser.readline()
+        if data:
+            arduino_data.append(data) # Append a data to your declared list
+            print(arduino_data)
 
 #Vise målinger fra EKG-apparat - hvad vil det sige? Er det bare i grafen?
 #Vise dynamisk graf med EKG-signalet
@@ -229,6 +252,7 @@ class EKGController:
         self.view.showPage("Patient")
 
 def Main():
+    ready()
     t1=Thread(target=FileWriter)
     t1.start()
     animation.FuncAnimation(fig, animate, interval=1000)
