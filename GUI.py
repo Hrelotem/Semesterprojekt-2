@@ -195,19 +195,19 @@ class EKGView(Frame):
                 self.yar.append(int(y))
 
     def startPlotThread(self):
-        t = Thread(target=self.getData())
-        t.start()
-        time.sleep(10)
+        #t = Thread(target=self.getData())
+        #t.start()
+        #time.sleep(10)
         t1=Thread(target=self.plotGraph)
         t1.start()
         
     def plotGraph(self):    
         while True:
             self.ax.clear()
-            #x = np.random.randint(0, 10, 10)
-            #y = np.random.randint(0, 10, 10)
-            x = self.xar[:10]
-            y = self.yar[:10]
+            x = np.random.randint(0, 10, 10)
+            y = np.random.randint(0, 10, 10)
+            #x = self.xar[:10]
+            #y = self.yar[:10]
             self.ax.plot(x,y)
             self.canvas.draw()
             time.sleep(2)
@@ -268,8 +268,8 @@ class EKGController:
 
 def Main():
     #ready()
-    t1=Thread(target=FileWriter)
-    t1.start()
+    #t1=Thread(target=FileWriter)
+    #t1.start()
     print("done")
     model = Model()
     view = View()
