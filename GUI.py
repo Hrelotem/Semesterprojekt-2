@@ -6,7 +6,9 @@ import datetime as dt
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from random import randrange
-from threading import Thread
+import random
+from threading import Thread, Lock
+import threading
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 import serial 
@@ -266,10 +268,87 @@ class EKGController:
     def showPatientPage(self):
         self.view.showPage("Patient")
 
+
+"""class Sensor:
+    def __init__(self):
+        pass
+        #self.createBuffer()
+        #Når konstruktøren startes, oprettes en buffer
+        #Klassen henter en værdi fra sensoren og lægger den i bufferen
+        #Når bufferen er fuld, skal der oprettes en ny buffer
+        #Sensor-klassen sender bufferen over i køen, når den er fuld
+
+    def createBuffer(self):
+        self.buffer = Buffer()
+
+    def run(self):
+        while True:
+            data = np.random.randint(0, 10, 10)
+            print(data)
+            time.sleep(1)
+        #if getattr(self.buffer,"self.count") == 1:
+        #    print("Hey")
+        #    self.createBuffer()
+
+        #Denne metode skal vist være en tråd
+
+    def calculateHR():
+        pass
+        #Det er formodentlig nemmest at beregne pulsen i denne klasse"""
+
+class Sensor(threading.Thread):
+    def __init__(self):
+        super().__init__()
+        pass
+
+    def run(self):
+        while True:
+            print("Hej")
+            time.sleep(1)
+
+class Buffer:
+    def __init__(self):
+        self.list = []
+        self.count = 0
+        self.Amount = 600
+    
+    def controlCount(self):
+        if len(self.list) == 600:
+            self.count = 1
+
+class Queue:
+    def __init__(self):
+        self.queue = []
+        self.lock = Lock()
+        self.bufferCount = 0
+        #Vi skal bruge lock-objektet på put() og get(), så de ikke kan udføres samtidig
+        #Køen indeholder de buffere, som ikke er sendt videre til databasen
+    
+    def put(self, buffer):
+        #modtager en buffer
+        #tæller bufferCount én op, når den modtager en buffer
+        #sender en notify, hvis den tæller bufferCount én op (vækker get())
+        with self.lock:
+            pass
+    
+    def get(self):
+        #undersøger, om værdien i køens tæller er større end 0. Hvis den er, kalder den en wait()
+        #piller den buffer ud af kø-listen, der har ligget i listen i længst tid, og returnerer den
+        #tæller bufferCount én ned, når den returnerer en buffer
+        with self.lock:
+            pass
+
+
+
 def Main():
     #ready()
     #t1=Thread(target=FileWriter)
     #t1.start()
+    #sensor = Sensor()
+    #t1 = Thread(target=sensor.run)
+    #t1.start()
+    #t = Sensor()
+    #t.start()
     print("done")
     model = Model()
     view = View()
@@ -278,5 +357,3 @@ def Main():
 
 if __name__ == "__main__":
     Main()
-
-#View().mainloop()
