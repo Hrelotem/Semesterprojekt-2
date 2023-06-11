@@ -7,17 +7,13 @@ import serial
 import sqlite3
 
 """
-OBS ift. koden:
 Database-klassen er meget ufærdig. Lige nu indsætter den kun én værdi fra bufferen i databasen og ikke hele bufferen.
-Den indsætter alle værdier i databasen knyttet til nummeret 1 i stedet for et autogenereret nummer.
 Den indsætter ingen patientdata sammen med EKG-værdierne.
-Man skal manuelt slette databasen på sin pc, hver gang man gerne vil køre programmet igen.
-Koden skal indsættes i try/except/finally-blokke.
 
 Spørgsmål:
 1) Er notify/wait/lock brugt rigtigt? Seems like it, but not sure
 2) Hvorfor returnerer get-metoden en None sammen med hver buffer???
-3) Hvordan indsætter man en liste i databasen? Det er vel meningen, at vi netop ikke skal splitte listen/bufferen op?
+3) Hvordan indsætter man en liste i databasen? Det er vel meningen, at vi netop ikke skal splitte listen/bufferen op? Det virker omstændigt med for-loop
 
 """
 
@@ -82,34 +78,12 @@ class Database:
         self.queue = queue
 
     def run(self):
-        self.createEKGTable = "CREATE TABLE EKGTable(Number INTEGER, Value INTEGER)"
-        self.insertEKG = "INSERT INTO EKGTable VALUES ({}, {})"
-        self.connection = sqlite3.connect("patientValues.db")
-        self.cursor = self.connection.cursor()
-
-        self.cursor.execute(self.createEKGTable)
-        
-        while True:
-            data = self.queue.get()
-            if data != None:
-                print(data)
-                test = data[0]
-                self.cursor.execute(self.insertEKG.format(1, test))
-                self.connection.commit()
-
-"""
-class Database:
-    def __init__(self, queue):
-        self.queue = queue
-
-    def run(self):
         try:
-            dropEKGTable = "DROP TABLE IF EXISTS EKGTable"
-            self.cursor.execute(dropEKGTable)
-            self.createEKGTable = "CREATE TABLE EKGTable(Number INTEGER, Value INTEGER)"
-            self.insertEKG = "INSERT INTO EKGTable VALUES ({}, {})"
             self.connection = sqlite3.connect("patientValues.db")
             self.cursor = self.connection.cursor()
+            dropEKGTable = "DROP TABLE IF EXISTS EKGTable"
+            self.cursor.execute(dropEKGTable)
+            self.createEKGTable = "CREATE TABLE EKGTable(Number INTEGER PRIMARY KEY AUTOINCREMENT, Value INTEGER)"
 
             self.cursor.execute(self.createEKGTable)
         
@@ -118,17 +92,13 @@ class Database:
                 if data != None:
                     print(data)
                     test = data[0]
-                    self.cursor.execute(self.insertEKG.format(1, test))
+                    self.cursor.execute("INSERT INTO EKGTable (Value) VALUES (?)", [test])
                     self.connection.commit()
-        
         except sqlite3.Error as e:
-            print("Kommunikationsfejl med SQLite", e)
-        
-        #finally:
-        #    self.cursor.close()
-        #    self.connection.close()
-"""
-
+            print("fejl", e)
+        finally:
+            self.cursor.close()
+            self.connection.close()
 
 def Main():
     Q1 = Queue()
