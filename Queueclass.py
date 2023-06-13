@@ -1,5 +1,7 @@
 from threading import Condition
+import threading
 import random
+import time
 
 class Queue:
     def __init__(self):
@@ -8,8 +10,6 @@ class Queue:
         self.bufferCount = 0
     
     def put(self, bufferlist):
-        #modtager en buffer og tæller bufferCount én op
-        #sender en notify, hvis den tæller bufferCount én op (vækker get())
         with self._lock:
             self.queue.append(bufferlist)           
             self.bufferCount += 1
@@ -17,46 +17,43 @@ class Queue:
                 self._lock.notify()
 
     def get(self):
-        #undersøger, om værdien i bufferCount er større end 0
-        #hvis bufferCount > 0 returneres den buffer i køen, som har ligget der længst
-        #+ der kaldes en wait() + bufferCount tælles én ned
         with self._lock:
             if self.bufferCount == 0:
                 self._lock.wait()
             self.bufferCount = self.bufferCount - 1
             return self.queue.pop(0)
 
-#Test flg.:
-#Put: Sender buffere, den modtager, i køen og tæller bufferCount op
-#Get: Returnerer de buffere, der ligger i køen, og tæller bufferCount ned
-
 class QueueTest:
     def __init__(self):
         self.queue = Queue()
         self.buffer = []
+        self.totalQueue = []                            #Kø med alle buffere, som produceres og sendes til kø-klassen af put
+        self.totalReturnedQueue = []                    #Kø med alle buffere, som returneres fra kø-klassen med get
 
-    def testPut(self):
-        for i in range (5):
-            for i in range(5):
+    def sensor(self):
+        while True:
+            for i in range(600):                          #simulering af sensorværdier, der lægges 600 ad gangen i buffere
                 self.data = round(random.random()*10)
                 self.buffer.append(self.data)
+                time.sleep(0.001)
             self.queue.put(self.buffer)
-            print("Queue: ", self.queue.queue, "Buffercount :", self.queue.bufferCount)
+            self.totalQueue.append(self.buffer)
             self.buffer = []
-    
-    def testGet(self):
-        for i in range (5):
-            print("Gettest: ", self.queue.get(), self.queue.bufferCount)
+
+    def database(self):
+        while True:
+            self.totalReturnedQueue.append(self.queue.get())
 
     def test(self):
-        self.testGet()
-        self.testPut()
-        self.testGet()
+        t1 = threading.Thread(target=self.sensor)
+        t2 = threading.Thread(target=self.database)
+        t1.start(), t2.start()
+        time.sleep(60)                                  #programmet testes i 60 sekunder
+        if self.totalQueue == self.totalReturnedQueue and self.queue.bufferCount == 0:
+            print("Program is working")
+        else:
+            print("Error in program")
 
-test = QueueTest()
-test.testPut()
-test.testGet()
 
-
-#Få det til at køre med test-funktionen
-#Ikke printe, men bare skrive "works"
+unittest = QueueTest()
+unittest.test()
