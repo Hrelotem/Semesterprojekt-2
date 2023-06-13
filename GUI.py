@@ -8,6 +8,9 @@ from threading import Thread
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import numpy as np
 import matplotlib.figure
+import random
+import threading
+
 
 #Koden under bruges til at tjekke at der er kommunikation mellem arduino og python
 #ser = serial.Serial('COM3',9600,timeout=1)
@@ -39,10 +42,12 @@ import matplotlib.figure
 
 #Lige nu viser grafen ikke løbende målinger, men det gør den, hvis man går tilbage til de tal, den selv genererer
 
+
 class Model:
     def __init__(self):
         self.valid = None
         self.patientCPRs = []
+        self.returnedBuffer = []
 
     def authPatient(self, data):                                        #OBS! Funktion som validerer, at CPR består af 1 tal. SKAL ÆNDRES TIL 10!
         try:
@@ -55,6 +60,15 @@ class Model:
                 self.valid = "No"
         except:
             self.valid = "No"
+
+    def simulateBuffer(self):
+        #Den endelige funktion her skal kalde get-funktionen i kø nr. 2
+        self.returnedBuffer = [] 
+        for i in range(10):
+            self.data = round(random.random()*10)
+            self.returnedBuffer.append(self.data)
+        print("Returneret buffer fra model: ", self.returnedBuffer)
+        #return self.returnedBuffer            
 
 class Root(Tk):
     def __init__(self):
@@ -174,35 +188,32 @@ class EKGView(Frame):
         self.space = Label(self, text="  ", font=("Segoe UI",30))
         self.space.grid(row=3, column=0)
 
-        self.plotButton = tk.Button(self, text="Vis EKG", bg="white", font=("Segoe UI",14), command = self.startPlotThread)
+        self.plotButton = tk.Button(self, text="Vis EKG", bg="white", font=("Segoe UI",14))#, command = self.startPlotThread)
         self.plotButton.grid(row=4, column=0, ipadx=15, ipady=5)
 
         self.xar = []
         self.yar = []
 
-    def getData(self):
-        pullData = open("C:\\Users\\Amanda\\OneDrive\\Dokumenter\\Universitet\\UpdatingSample.txt", "r").read()
-        dataArray = pullData.split('\n')
-        for eachLine in dataArray:
-            if len(eachLine)>1:
-                x,y = eachLine.split(',')
-                self.xar.append(int(x))
-                self.yar.append(int(y))
+    #def getData(self):
+    #    pullData = open("C:\\Users\\Amanda\\OneDrive\\Dokumenter\\Universitet\\UpdatingSample.txt", "r").read()
+    #    dataArray = pullData.split('\n')
+    #    for eachLine in dataArray:
+    #        if len(eachLine)>1:
+    #            x,y = eachLine.split(',')
+    #            self.xar.append(int(x))
+    #            self.yar.append(int(y))
 
-    def startPlotThread(self):
-        #t = Thread(target=self.getData())
-        #t.start()
-        #time.sleep(10)
-        t1=Thread(target=self.plotGraph)
-        t1.start()
+    #def startPlotThread(self, yar):
+    #    t1=Thread(target=self.plotGraph(args=yar,))
+    #    t1.start()
         
-    def plotGraph(self):    
+    def plotGraph(self, yar):    
         while True:
             self.ax.clear()
-            x = np.random.randint(0, 10, 10)
-            y = np.random.randint(0, 10, 10)
-            #x = self.xar[:10]
-            #y = self.yar[:10]
+            #x = np.random.randint(0, 10, 10)
+            #y = np.random.randint(0, 10, 10)
+            x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+            y = yar
             self.ax.plot(x,y)
             self.canvas.draw()
             time.sleep(2)
@@ -253,13 +264,26 @@ class EKGController:
         self.model = model
         self.view = view
         self.EKGFrame = self.view.frames["EKG"]
-        self._bind()
+        self._bind1()
+        self._bind2()
     
-    def _bind(self):
+    def _bind1(self):
         self.EKGFrame.button.config(command=self.showPatientPage)
     
     def showPatientPage(self):
         self.view.showPage("Patient")
+
+    def _bind2(self):
+        self.EKGFrame.plotButton.config(command=self.startPlotGraph)
+
+    def startPlotGraph(self):
+        #t=Thread(target=self.EKGFrame.plotGraph, args=([2, 4, 7, 9, 15],))
+        t = Thread(target=self.model.simulateBuffer)
+        t.start()
+        #t=Thread(target=self.EKGFrame.plotGraph, args=(self.model.simulateBuffer,))
+        #t.start()
+        t1=Thread(target=self.EKGFrame.plotGraph, args=(self.model.returnedBuffer,))
+        t1.start()
 
 def Main():
     #ready()
