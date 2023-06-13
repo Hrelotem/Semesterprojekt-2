@@ -81,8 +81,8 @@ class Database:
         try:
             self.connection = sqlite3.connect("patientValues.db")
             self.cursor = self.connection.cursor()
-            dropEKGTable = "DROP TABLE IF EXISTS EKGTable"
-            self.cursor.execute(dropEKGTable)
+            self.dropEKGTable = "DROP TABLE IF EXISTS EKGTable"
+            self.cursor.execute(self.dropEKGTable)
             self.createEKGTable = "CREATE TABLE EKGTable(Number INTEGER PRIMARY KEY AUTOINCREMENT, Value INTEGER)"
 
             self.cursor.execute(self.createEKGTable)
