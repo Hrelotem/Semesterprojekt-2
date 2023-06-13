@@ -276,6 +276,7 @@ class EKGController:
     def _bind2(self):
         self.EKGFrame.plotButton.config(command=self.startPlotGraph)
 
+#Nedenstående funktion skal ændres - bufferen simuleres kun én gang, og der gives en statisk liste som argument i l. 286
     def startPlotGraph(self):
         #t=Thread(target=self.EKGFrame.plotGraph, args=([2, 4, 7, 9, 15],))
         t = Thread(target=self.model.simulateBuffer)
