@@ -11,15 +11,18 @@ Database-klassen er meget ufærdig. Lige nu indsætter den kun én værdi fra bu
 Den indsætter ingen patientdata sammen med EKG-værdierne.
 
 Spørgsmål:
-1) Er notify/wait/lock brugt rigtigt? Seems like it, but not sure
 2) Hvorfor returnerer get-metoden en None sammen med hver buffer???
 3) Hvordan indsætter man en liste i databasen? Det er vel meningen, at vi netop ikke skal splitte listen/bufferen op? Det virker omstændigt med for-loop
 
 """
 
-
 #Sensor-klassen opretter en buffer, henter værdier fra sensoren og lægger værdierne i bufferen
 #Når bufferen er fuld, sendes den over i køen, og der oprettes en ny buffer (processen starter forfra)
+
+class Buffer:
+    def __init__(self):
+        self.list = []
+        self.Amount = 100
 
 class Sensor:
     def __init__(self, queue):
@@ -28,9 +31,9 @@ class Sensor:
 
     def run(self):
         while True:
-            data = round(random.random()*10)
-            self.buffer.list.append(data)
-            time.sleep(1)
+            self.data = round(random.random()*10)
+            self.buffer.list.append(self.data)
+            time.sleep(0.1)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
             if len(self.buffer.list) == self.buffer.Amount:
                 self.queue.put(self.buffer)
                 self.buffer = Buffer()
@@ -38,11 +41,6 @@ class Sensor:
     def calculateHR():
         pass
         #Det er formodentlig nemmest at beregne pulsen i denne klasse
-
-class Buffer:
-    def __init__(self):
-        self.list = []
-        self.Amount = 5
 
 #Kø-klassen indeholder en kø af buffere, som ikke er sendt videre til databasen
 #Lock-objekt skal forhindre, at put() og get() udføres samtidig
@@ -59,7 +57,8 @@ class Queue:
         with self._lock:
             self.queue.append(buffer.list)
             self.bufferCount += 1
-            self._lock.notify()
+            if self.bufferCount == 1:
+                self._lock.notify()
 
     def get(self):
         #undersøger, om værdien i bufferCount er større end 0
@@ -68,11 +67,9 @@ class Queue:
         with self._lock:
             if self.bufferCount == 0:
                 self._lock.wait()
-            else:
-                self.bufferCount = self.bufferCount - 1
-                return self.queue.pop(0)
+            self.bufferCount = self.bufferCount - 1
+            return self.queue.pop(0)
 
-                
 class Database:
     def __init__(self, queue):
         self.queue = queue
@@ -83,22 +80,28 @@ class Database:
             self.cursor = self.connection.cursor()
             self.dropEKGTable = "DROP TABLE IF EXISTS EKGTable"
             self.cursor.execute(self.dropEKGTable)
-            self.createEKGTable = "CREATE TABLE EKGTable(Number INTEGER PRIMARY KEY AUTOINCREMENT, Value INTEGER)"
-
+            #self.createEKGTable = "CREATE TABLE EKGTable(Number INTEGER PRIMARY KEY AUTOINCREMENT, Value INTEGER)"
+            self.createEKGTable = "CREATE TABLE EKGTable(ID INTEGER PRIMARY KEY, Value INTEGER)"
             self.cursor.execute(self.createEKGTable)
-        
+            self.insert = "INSERT INTO EKGTable VALUES ({},{})"
+            self.id = 1
+
             while True:
                 data = self.queue.get()
                 if data != None:
-                    print(data)
-                    test = data[0]
-                    self.cursor.execute("INSERT INTO EKGTable (Value) VALUES (?)", [test])
+                    print(data, "Databasedata")
+                    for i in data:
+                        self.cursor.execute(self.insert.format(self.id, i))
+                        self.id +=1
+                    #self.cursor.execute("INSERT INTO EKGTable (Value) VALUES (?)", [test])
                     self.connection.commit()
+                    
         except sqlite3.Error as e:
-            print("fejl", e)
+            print("Fejl", e)
         finally:
             self.cursor.close()
             self.connection.close()
+
 
 def Main():
     Q1 = Queue()
