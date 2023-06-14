@@ -83,10 +83,15 @@ class Database:
             self.cursor1 = self.connection1.cursor()
             self.dropEKGTable = "DROP TABLE IF EXISTS EKGTable"
             self.cursor1.execute(self.dropEKGTable)
+            self.dropPatientTable = "DROP TABLE IF EXISTS PatientTable"
+            self.cursor1.execute(self.dropPatientTable)
 
             self.createEKGTable = "CREATE TABLE EKGTable(ID INTEGER PRIMARY KEY, Value INTEGER)"
             self.cursor1.execute(self.createEKGTable)
             self.insert = "INSERT INTO EKGTable VALUES ({},{})"
+            self.createPatientTable = "CREATE TABLE PatientTable(ID INTEGER PRIMARY KEY, Name VARCHAR, CPR INTEGER)"
+            self.cursor1.execute(self.createPatientTable)
+            self.insert = "INSERT INTO EKGTable VALUES ({},'{}',{})"
             self.id = 1
 
             self.connection2 = sqlite3.connect("PatientData.db")
