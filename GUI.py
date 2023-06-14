@@ -4,45 +4,93 @@ from tkinter import *
 import time
 import datetime as dt
 from random import randrange
-from threading import Thread
+from threading import Thread, Condition
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import numpy as np
 import matplotlib.figure
 import random
 import threading
 import sqlite3
+import serial
 
 
-#Koden under bruges til at tjekke at der er kommunikation mellem arduino og python
-#ser = serial.Serial('COM3',9600,timeout=1)
+class Buffer:
+    def __init__(self):
+        self.list = []
+        self.Amount = 100
 
-#def ready():
- #   notReady = True
-  #  print("Start")
-   # time.sleep(1)
-    #while notReady:
-     #   readyData = ser.read()
-      #  readyData = readyData.decode()
-       # print(readyData)
-        #if readyData == "K":    
-         #   pyReady = "R"
-          #  pySend = pyReady.encode()
-           # ser.write(pySend)
-            #notReady = False
+class Sensor:
+    def __init__(self, queue):
+        self.buffer = Buffer()
+        self.queue = queue
 
-#def queue():
- #   arduino_data = [] # declare a list
-  #  while True:
-   #     data = ser.readline()
-    #    if data:
-     #       arduino_data.append(data) # Append a data to your declared list
-      #      print(arduino_data)
+    def run(self):
+        while True:
+            self.data = round(random.random()*10)
+            #self.data = ser.readline().decode().strip('\r\n')
+            if len(self.data) > 0:
+                #self.buffer.list.append(int(self.data))
+                self.buffer.list.append(self.data)
+                time.sleep(0.01)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
+                if len(self.buffer.list) == self.buffer.Amount:
+                    self.queue.put(self.buffer)
+                    self.buffer = Buffer()
 
-#Vise målinger fra EKG-apparat - hvad vil det sige? Er det bare i grafen?
-#Vise dynamisk graf med EKG-signalet
+    def calculateHR():
+        pass
+        #Det er formodentlig nemmest at beregne pulsen i denne klasse
 
-#Lige nu viser grafen ikke løbende målinger, men det gør den, hvis man går tilbage til de tal, den selv genererer
+class Queue:
+    def __init__(self):
+        self.queue = []
+        self._lock = Condition()
+        self.bufferCount = 0
+    
+    def put(self, buffer):
+        with self._lock:
+            self.queue.append(buffer.list)
+            self.bufferCount += 1
+            if self.bufferCount == 1:
+                self._lock.notify()
 
+    def get(self):
+        with self._lock:
+            if self.bufferCount == 0:
+                self._lock.wait()
+            self.bufferCount = self.bufferCount - 1
+            return self.queue.pop(0)
+
+class Database:
+    def __init__(self, queue):
+        self.queue = queue
+
+    def run(self):
+        try:
+            self.connection = sqlite3.connect("PatientData.db")
+            self.cursor = self.connection.cursor()
+            self.dropEKGTable = "DROP TABLE IF EXISTS EKGTable"
+            self.cursor.execute(self.dropEKGTable)
+            #self.createEKGTable = "CREATE TABLE EKGTable(Number INTEGER PRIMARY KEY AUTOINCREMENT, Value INTEGER)"
+            self.createEKGTable = "CREATE TABLE EKGTable(ID INTEGER PRIMARY KEY, Value INTEGER)"
+            self.cursor.execute(self.createEKGTable)
+            self.insert = "INSERT INTO EKGTable VALUES ({},{})"
+            self.id = 1
+
+            while True:
+                data = self.queue.get()
+                if data != None:
+                    print(data, "Databasedata")
+                    for i in data:
+                        self.cursor.execute(self.insert.format(self.id, i))
+                        self.id +=1
+                    #self.cursor.execute("INSERT INTO EKGTable (Value) VALUES (?)", [test])
+                    self.connection.commit()
+                    
+        except sqlite3.Error as e:
+            print("Fejl", e)
+        finally:
+            self.cursor.close()
+            self.connection.close()
 
 class Model:
     def __init__(self):
@@ -240,17 +288,6 @@ class Graph:
             self.canvas.draw()
             time.sleep(2)
 
-def FileWriter():
-    f=open("C:\\Users\\Amanda\\OneDrive\\Dokumenter\\Universitet\\UpdatingSample.txt", 'a')
-    i=0
-    while True:
-        i+=1
-        j=randrange(10)
-        data = f.write(str(i)+','+str(j)+'\n')
-        print("wrote data")
-        time.sleep(2)
-        f.flush()
-
 class Controller:
     def __init__(self, model, view):
         self.model = model
@@ -304,9 +341,13 @@ class EKGController:
         t.start()
 
 def Main():
-    #ready()
-    #t1=Thread(target=FileWriter)
-    print("done")
+    Q1 = Queue()
+    sensor = Sensor(Q1)
+    database = Database(Q1)
+    t1 = threading.Thread(target=sensor.run)
+    t1.start()
+    t2 = threading.Thread(target=database.run)
+    t2.start()
     model = Model()
     view = View()
     controller = Controller(model, view)
