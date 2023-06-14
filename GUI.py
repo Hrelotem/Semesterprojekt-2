@@ -70,15 +70,70 @@ class Queue:
             return self.queue.pop(0)
 
 class Database:
-    def __init__(self, queue):
-        self.queue = queue
+    def __init__(self, queue1, queue2):
+        self.Q1 = queue1
+        self.Q2 = queue2
 
+    #Funktionen kan godt fetche, når man udkommenterer den del af koden, der lægger værdier i databasen,  
+    #og kører programmet, når der er værdier i databasen på forhånd.
+
+    def run(self):
+        try:
+            self.connection1 = sqlite3.connect("PatientData.db")
+            self.cursor1 = self.connection1.cursor()
+            self.dropEKGTable = "DROP TABLE IF EXISTS EKGTable"
+            self.cursor1.execute(self.dropEKGTable)
+
+            self.createEKGTable = "CREATE TABLE EKGTable(ID INTEGER PRIMARY KEY, Value INTEGER)"
+            self.cursor1.execute(self.createEKGTable)
+            self.insert = "INSERT INTO EKGTable VALUES ({},{})"
+            self.id = 1
+
+            self.connection2 = sqlite3.connect("PatientData.db")
+            self.cursor2 = self.connection2.cursor()
+            self.cursor2.execute("SELECT Value FROM EKGTable")
+            self.list = []
+
+            while True:
+                #Lægger data fra kø 1 ind i databasen
+                dataToDatabase = self.Q1.get()
+                print(dataToDatabase)               #Printer den data, jeg også vil se, når jeg printer row
+                if dataToDatabase != None:
+                    #print(data, "Databasedata")
+                    for i in dataToDatabase:
+                        self.cursor1.execute(self.insert.format(self.id, i))
+                        self.id +=1
+                    self.connection1.commit()
+                
+                #Lægger data fra databasen i kø 2
+                row = self.cursor2.fetchone()
+                if row:
+                    print(row)
+                #if row != None:                     #OBS! Problemet er, at den ser row som None
+                #    row = row[0]                    #Det gælder uanset om jeg opretter 1 eller 2 connection/cursor-objekter
+                #    self.list.append(row)           #Idé! Cursoren bliver ved at flytte sig, også når den får None-værdier?
+                #    if len(self.list) == 10:
+                #        self.Q2.put(self.list)
+                #        self.list = []
+
+        except sqlite3.Error as e:
+            print("Fejl", e)
+
+        finally:
+            self.cursor1.close()
+            self.cursor2.close()
+            self.connection1.close()
+            self.connection2.close()
+    
+    """Nedenfor har jeg adskilt run-metoden ovenfor i to - men det duer heller ikke og er ikke en nice løsning
+    
     def run(self):
         try:
             self.connection = sqlite3.connect("PatientData.db")
             self.cursor = self.connection.cursor()
             self.dropEKGTable = "DROP TABLE IF EXISTS EKGTable"
             self.cursor.execute(self.dropEKGTable)
+
             #self.createEKGTable = "CREATE TABLE EKGTable(Number INTEGER PRIMARY KEY AUTOINCREMENT, Value INTEGER)"
             self.createEKGTable = "CREATE TABLE EKGTable(ID INTEGER PRIMARY KEY, Value INTEGER)"
             self.cursor.execute(self.createEKGTable)
@@ -86,20 +141,46 @@ class Database:
             self.id = 1
 
             while True:
-                data = self.queue.get()
-                if data != None:
-                    print(data, "Databasedata")
-                    for i in data:
+                #Lægger data fra kø 1 ind i databasen
+                dataToDatabase = self.Q1.get()
+                if dataToDatabase != None:
+                    #print(data, "Databasedata")
+                    print(dataToDatabase)
+                    for i in dataToDatabase:
                         self.cursor.execute(self.insert.format(self.id, i))
                         self.id +=1
                     #self.cursor.execute("INSERT INTO EKGTable (Value) VALUES (?)", [test])
                     self.connection.commit()
-                    
+        
         except sqlite3.Error as e:
             print("Fejl", e)
         finally:
             self.cursor.close()
             self.connection.close()
+
+    def databaseToQ2(self):
+        try:
+            self.connection1 = sqlite3.connect("PatientData.db")
+            self.cursor1 = self.connection1.cursor()
+            self.cursor1.execute("SELECT Value FROM EKGTable")
+            self.list = []
+
+            while True:
+                row = self.cursor1.fetchone()
+                if row != None:                     #PROBLEM! Problemet er, at den ser row som none. Skal jeg have flere cursor-objekter?
+                    print(row)
+                    row = row[0]
+                    self.list.append(row)
+                    if len(self.list) == 10:
+                        #self.Q2.put(self.list)
+                        self.list = []
+
+        except sqlite3.Error as e:
+            print("Fejl", e)
+        finally:
+            self.cursor1.close()
+            self.connection1.close()"""
+                 
 
 class Model:
     def __init__(self):
@@ -265,11 +346,12 @@ class EKGView(Frame):
         self.plotButton = tk.Button(self, text="Vis EKG", bg="white", font=("Segoe UI",14))
         self.plotButton.grid(row=4, column=0, ipadx=15, ipady=5)
 
-        self.graph = Graph(self.EKGFrame)
+        #self.graph = Graph(self.EKGFrame)
 
 class Graph:
-    def __init__(self, frame):
+    def __init__(self, frame, queue):
         self.frame = frame
+        self.queue = queue
         self.fig = matplotlib.figure.Figure()
         self.ax = self.fig.add_subplot()
         self.canvas = FigureCanvasTkAgg(self.fig, master = self.frame)
@@ -287,9 +369,12 @@ class Graph:
             time.sleep(1)
             return self.returnedBuffer
     
-    def getdata(self):
-        pass
-        #Skal erstatte ovenstående funktion. Skal hente data fra kø-klassen.
+    #def getdata(self):
+    #    while True:
+    #        data = self.queue.get()
+
+        
+        #Skal erstatte ovenstående funktion. Skal hente data fra kø-klassen (kalde get()).
         #Skal finde ud af strukturen. Hvem kalder put() og get()?
         #Måske skal databasen have kø nr. 2 som argument? Og kalde put()?
         #Det er databasen, som skal sende data til kø-klasse nr. 2
@@ -299,7 +384,8 @@ class Graph:
 
     def plotGraph(self):    
         while True:
-            self.yar = self.simulateBuffer()
+            #self.yar = self.simulateBuffer()
+            self.yar = self.queue.get()
             self.ax.clear()
             x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
             y = self.yar
@@ -308,10 +394,11 @@ class Graph:
             time.sleep(2)
 
 class Controller:
-    def __init__(self, model, view):
+    def __init__(self, model, view, queue):
         self.model = model
         self.view = view
-        self.ekgController = EKGController(model, view)
+        self.queue = queue
+        self.ekgController = EKGController(model, view, queue)
         self.patientController = PatientController(model, view)         
 
     def start(self):
@@ -338,11 +425,13 @@ class PatientController:
             self.view.showPage("EKG")
 
 class EKGController:
-    def __init__(self, model, view):
+    def __init__(self, model, view, queue):
         self.model = model
         self.view = view
+        self.queue = queue
         self.EKGFrame = self.view.frames["EKG"]
-        self.graph = self.EKGFrame.graph
+        #self.graph = self.EKGFrame.graph
+        self.graph = Graph(self.EKGFrame.EKGFrame, self.queue)
         self._bind1()
         self._bind2()
     
@@ -359,18 +448,21 @@ class EKGController:
         t = Thread(target=self.graph.plotGraph)
         t.start()
 
+
 def Main():
     Q1 = Queue()
     Q2 = Queue()
     sensor = Sensor(Q1)
-    database = Database(Q1)
+    database = Database(Q1, Q2)
     t1 = threading.Thread(target=sensor.run)
     t1.start()
     t2 = threading.Thread(target=database.run)
     t2.start()
+    #t3 = threading.Thread(target=database.databaseToQ2)
+    #t3.start()
     model = Model()
     view = View()
-    controller = Controller(model, view)
+    controller = Controller(model, view, Q2)
     controller.start()
 
 if __name__ == "__main__":
