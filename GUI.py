@@ -17,24 +17,33 @@ import serial
 class Buffer:
     def __init__(self):
         self.list = []
-        self.Amount = 100
+        self.Amount = 5
 
 class Sensor:
     def __init__(self, queue):
         self.buffer = Buffer()
         self.queue = queue
 
-    def run(self):
+    """def run(self):
         while True:
             self.data = round(random.random()*10)
-            #self.data = ser.readline().decode().strip('\r\n')
+            self.data = ser.readline().decode().strip('\r\n')
             if len(self.data) > 0:
-                #self.buffer.list.append(int(self.data))
+                self.buffer.list.append(int(self.data))
                 self.buffer.list.append(self.data)
                 time.sleep(0.01)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
                 if len(self.buffer.list) == self.buffer.Amount:
                     self.queue.put(self.buffer)
-                    self.buffer = Buffer()
+                    self.buffer = Buffer()"""
+    
+    def run(self):
+        while True:
+            self.data = round(random.random()*10)
+            self.buffer.list.append(self.data)
+            time.sleep(1)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
+            if len(self.buffer.list) == self.buffer.Amount:
+                self.queue.put(self.buffer)
+                self.buffer = Buffer()
 
     def calculateHR():
         pass
@@ -277,6 +286,16 @@ class Graph:
             print("Returneret buffer fra model: ", self.returnedBuffer)
             time.sleep(1)
             return self.returnedBuffer
+    
+    def getdata(self):
+        pass
+        #Skal erstatte ovenstående funktion. Skal hente data fra kø-klassen.
+        #Skal finde ud af strukturen. Hvem kalder put() og get()?
+        #Måske skal databasen have kø nr. 2 som argument? Og kalde put()?
+        #Det er databasen, som skal sende data til kø-klasse nr. 2
+        #Grafen skal også kende til køen...
+        #Det er et issue, fordi grafen instantieres i EKGView
+        #Måske lave køer til globale variable?
 
     def plotGraph(self):    
         while True:
@@ -342,6 +361,7 @@ class EKGController:
 
 def Main():
     Q1 = Queue()
+    Q2 = Queue()
     sensor = Sensor(Q1)
     database = Database(Q1)
     t1 = threading.Thread(target=sensor.run)
