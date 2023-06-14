@@ -7,7 +7,6 @@ import serial
 import sqlite3
 
 """
-Database-klassen er meget ufærdig. Lige nu indsætter den kun én værdi fra bufferen i databasen og ikke hele bufferen.
 Den indsætter ingen patientdata sammen med EKG-værdierne.
 
 Spørgsmål:
@@ -18,6 +17,8 @@ Spørgsmål:
 
 #Sensor-klassen opretter en buffer, henter værdier fra sensoren og lægger værdierne i bufferen
 #Når bufferen er fuld, sendes den over i køen, og der oprettes en ny buffer (processen starter forfra)
+
+ser = serial.Serial('COM3',38400,timeout=1)
 
 class Buffer:
     def __init__(self):
@@ -31,12 +32,14 @@ class Sensor:
 
     def run(self):
         while True:
-            self.data = round(random.random()*10)
-            self.buffer.list.append(self.data)
-            time.sleep(0.01)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
-            if len(self.buffer.list) == self.buffer.Amount:
-                self.queue.put(self.buffer)
-                self.buffer = Buffer()
+            #self.data = round(random.random()*10)
+            self.data = ser.readline().decode().strip('\r\n')
+            if len(self.data) > 0:
+                self.buffer.list.append(int(self.data))
+                time.sleep(0.01)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
+                if len(self.buffer.list) == self.buffer.Amount:
+                    self.queue.put(self.buffer)
+                    self.buffer = Buffer()
 
     def calculateHR():
         pass
