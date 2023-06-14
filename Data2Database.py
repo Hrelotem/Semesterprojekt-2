@@ -33,7 +33,7 @@ class Sensor:
         while True:
             self.data = round(random.random()*10)
             self.buffer.list.append(self.data)
-            time.sleep(0.1)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
+            time.sleep(0.01)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
             if len(self.buffer.list) == self.buffer.Amount:
                 self.queue.put(self.buffer)
                 self.buffer = Buffer()
@@ -76,7 +76,7 @@ class Database:
 
     def run(self):
         try:
-            self.connection = sqlite3.connect("patientValues.db")
+            self.connection = sqlite3.connect("PatientData.db")
             self.cursor = self.connection.cursor()
             self.dropEKGTable = "DROP TABLE IF EXISTS EKGTable"
             self.cursor.execute(self.dropEKGTable)
