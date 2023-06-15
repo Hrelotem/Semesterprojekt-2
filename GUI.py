@@ -13,11 +13,16 @@ import threading
 import sqlite3
 import serial
 
+#Hvis man vil se punkterne, skal der ændres på antal punkter + hastighed, hvormed værdierne simuleres.
+#Det gøres tre steder:
+#1) buffer-klassens amount
+#2) sensor-klassens time.sleep i run-metoden
+#3) graf-klassens plotgraph-metode
 
 class Buffer:
     def __init__(self):
         self.list = []
-        self.Amount = 10
+        self.Amount = 600
 
 class Sensor:
     def __init__(self, queue):
@@ -40,7 +45,7 @@ class Sensor:
         while True:
             self.data = round(random.random()*10)
             self.buffer.list.append(self.data)
-            time.sleep(1)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
+            time.sleep(0.001)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
             if len(self.buffer.list) == self.buffer.Amount:
                 self.bufferlist = self.buffer.list
                 self.queue.put(self.bufferlist)
@@ -267,11 +272,10 @@ class Graph:
         while True:
             self.yar = self.queue.get()
             self.ax.clear()
-            x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+            x = list(range(1, 601))
             y = self.yar
             self.ax.plot(x,y)
             self.canvas.draw()
-            time.sleep(2)
 
 class Controller:
     def __init__(self, model, view, queue):
