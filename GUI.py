@@ -327,7 +327,6 @@ class EKGController:
         t = Thread(target=self.graph.plotGraph)
         t.start()
 
-
 def Main():
     Q1 = Queue()
     Q2 = Queue()
