@@ -91,7 +91,7 @@ class Database:
             self.insert = "INSERT INTO EKGTable VALUES ({},{})"
             self.createPatientTable = "CREATE TABLE PatientTable(ID INTEGER PRIMARY KEY, Name VARCHAR, CPR INTEGER)"
             self.cursor1.execute(self.createPatientTable)
-            self.insert = "INSERT INTO EKGTable VALUES ({},'{}',{})"
+            self.insertPatient = "INSERT INTO Patient VALUES ({},'{}',{})"
             self.id = 1
 
             self.connection2 = sqlite3.connect("PatientData.db")
@@ -107,6 +107,7 @@ class Database:
                     #print(data, "Databasedata")
                     for i in dataToDatabase:
                         self.cursor1.execute(self.insert.format(self.id, i))
+                        self.cursor1.execute(self.insertPatient.format(self.id, self.PTName, self.CPR))
                         self.id +=1
                     self.connection1.commit()
                 
@@ -294,28 +295,16 @@ class PatientView(Frame):
         self.space1 = Label(self, text="  ",  font=("Segoe UI",10))
         self.space1.grid(row=6, column=0)
 
+        self.SavePatientData = IntVar()
         self.button = tk.Button(self, text="Se EKG for patient", bg="white", font=("Segoe UI",13), command = self.saveData)
         self.button.grid(row=7, columnspan = 2, ipadx=50, pady=40)
     def saveData(self):
         self.patientName =tk.StringVar()
         self.patientCPR = tk.StringVar()
-        try:
-            self.name = self.patientName.set(self.nameEntry.get())
-            self.CPR = self.patientCPR.set(self.CPREntry.get())
-            self.create_Patient_table = "CREATE TABLE Patient ( Name VARCHAR, CPR INT)"
-            self.insert_Patient = "INSERT INTO Patient VALUES ('{}',{})"
-            self.drop_patient = "DROP TABLE Patient"
-
-            self.sqliteConnection = sqlite3.connect("PatientData.db")
-            self.cursor = self.sqliteConnection.cursor()
-
-            self.result_Patient = self.cursor.execute(self.create_Patient_table)
-            while self.sqliteConnection:
-                self.result_Patient =self.cursor.execute(self.insert_Patient.format(self.name,self.CPR))
-                self.result_Patient =self.cursor.execute(self.drop_patient)
-                self.sqliteConnection.commit()
-        except sqlite3.Error as e:
-            print("Kommunikationsfejl med SQLite:",e)
+        if self.SavePatientData.get() == 1:
+            self.PTName = self.patientName.set(self.nameEntry.get())
+            self.PTCPR = self.patientCPR.set(self.CPREntry.get())
+        
 
 class EKGView(Frame):
     def __init__(self, *args, **kwargs):
