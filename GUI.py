@@ -13,21 +13,23 @@ import threading
 import sqlite3
 import serial
 
-#Hvis man vil se punkterne, skal der ændres på antal punkter + hastighed, hvormed værdierne simuleres.
-#Det gøres tre steder:
+#Tre relevante steder at kende - her ændres bufferstørrelse + hastighed, hvormed simulerede værdier hentes
 #1) buffer-klassens amount
 #2) sensor-klassens time.sleep i run-metoden
 #3) graf-klassens plotgraph-metode
 
+#Obs. I den endelige kode kan nogle af de importerede libraries nok fjernes.
+
 class Buffer:
     def __init__(self):
         self.list = []
-        self.Amount = 600
+        self.Amount = 274
 
 class Sensor:
     def __init__(self, queue):
         self.buffer = Buffer()
         self.queue = queue
+        self.infile = open("C:\\Users\\Amanda\\OneDrive\\Dokumenter\\Universitet\\01. Sundhedsteknologi\\Semesterprojekt 2\\Testmålinger.txt", "r")
 
     """def run(self):
         while True:
@@ -41,11 +43,23 @@ class Sensor:
                     self.queue.put(self.buffer)
                     self.buffer = Buffer()"""
     
-    def run(self):
+    """Nedenstående funktion simulerer tilfældige værdier
+        def run(self):
         while True:
             self.data = round(random.random()*10)
             self.buffer.list.append(self.data)
             time.sleep(0.001)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
+            if len(self.buffer.list) == self.buffer.Amount:
+                self.bufferlist = self.buffer.list
+                self.queue.put(self.bufferlist)
+                self.buffer = Buffer()"""
+
+    def run(self):
+        for aline in self.infile:
+            value = aline.split()
+            value = value[0]
+            self.buffer.list.append(value)
+            time.sleep(0.01)
             if len(self.buffer.list) == self.buffer.Amount:
                 self.bufferlist = self.buffer.list
                 self.queue.put(self.bufferlist)
@@ -138,8 +152,8 @@ class Root(Tk):
     def __init__(self):
         super().__init__()
         self.title("EKG for patient")
-        self.configure(width=1000, height=600)    
-        self.minsize(width=1000, height=600)                            #Sætter en mindste-størrelse af vinduet
+        self.configure(width=1050, height=600)    
+        self.minsize(width=1050, height=600)                            #Sætter en mindste-størrelse af vinduet
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -147,7 +161,7 @@ class Root(Tk):
 
         #Sætter tid og dato i bunden af skærmen
         self.Timelabel=tk.Label(self, font=("Helvetica bold", 10))
-        self.Timelabel.grid(row = 1, column = 0, sticky = E, padx=48)
+        self.Timelabel.grid(row = 1, column = 0, sticky = W, padx=25)
         def digitalclock():                                                                 #opretter funktion for at kunne vise tiden 
             text_input = time.strftime("%H:%M:%S")                                          #viser tiden i timer, minutter og sekunder og gemmer det som en variable
             self.Timelabel.config(text=text_input)
@@ -157,7 +171,10 @@ class Root(Tk):
         self.date = dt.datetime.now()                                                       #kalder på funktionen der viser tiden og gemmer den i variablen
         self.format_date = f"{self.date:%A, %B %d, %Y}"                                     #viser datoen i dag, måned, dato og år 
         self.Datelabel=tk.Label(self, text = self.format_date,  font=("Helvetica bold", 10))
-        self.Datelabel.grid(row = 1,  column = 0, sticky = E, padx=120)
+        self.Datelabel.grid(row = 1,  column = 0, sticky = W, padx=100)
+
+        self.space = Label(self, text="  ", font=("Segoe UI",5))
+        self.space.grid(row=2, column=0)
 
 class View:
     def __init__(self):
@@ -187,15 +204,15 @@ class PatientView(Frame):
         self.grid_columnconfigure(1, weight=1)
 
         self.header = Label(self, text="Patient", font=("Helvetica bold", 30))
-        self.header.grid(row=0, column=0, pady=70, sticky=S, columnspan=2)
+        self.header.grid(row=0, column=0, pady=80, sticky=S, columnspan=2)
 
-        self.text = Label(self, text="Indtast patientoplysninger for at se målinger for patienten.", font=("Segoe UI", 13))
+        self.text = Label(self, text="Indtast patientoplysninger for at se målinger for patienten.", font=("Segoe UI", 14))
         self.text.grid(row=1, column=0, columnspan=2)
 
         self.space = Label(self, text="  ", font=("Segoe UI",30))
         self.space.grid(row=2, column=0)
         
-        self.CPR = tk.Label(self, text = "Patientens CPR-nummer:", font=("Segoe UI",13))
+        self.CPR = tk.Label(self, text = "Patientens CPR-nummer:", font=("Segoe UI",14))
         self.CPR.grid(row=3, column=0, sticky = E)
 
         self.CPREntry = tk.Entry(self) 
@@ -204,7 +221,7 @@ class PatientView(Frame):
         self.space1 = Label(self, text="  ",  font=("Segoe UI",10))
         self.space1.grid(row=4, column=0)
 
-        self.name = tk.Label(self, text = "Patientens navn:", font=("Segoe UI",13))
+        self.name = tk.Label(self, text = "Patientens navn:", font=("Segoe UI",14))
         self.name.grid(row=5, column=0, sticky = E)
 
         self.nameEntry = tk.Entry(self) 
@@ -214,7 +231,7 @@ class PatientView(Frame):
         self.space1.grid(row=6, column=0)
 
         self.SavePatientData = IntVar()
-        self.button = tk.Button(self, text="Se EKG for patient", bg="white", font=("Segoe UI",13), command = self.saveData)
+        self.button = tk.Button(self, text="Se EKG for patient", bg="white", font=("Segoe UI",14), command = self.saveData)
         self.button.grid(row=7, columnspan = 2, ipadx=50, pady=40)
     
     def saveData(self):
@@ -233,10 +250,13 @@ class EKGView(Frame):
 
         self.patientName=tk.StringVar()
         self.showPatientName = tk.Label(self, font=("Helvetica bold", 30), textvariable=self.patientName)
-        self.showPatientName.grid(row=0, column=0, pady = 70, sticky=S, columnspan=2)
+        self.showPatientName.grid(row=0, column=0, pady = 40, sticky=S, columnspan=2)
+
+        self.plotButton = tk.Button(self, text="Vis EKG", bg="DarkOliveGreen3", font=("Segoe UI",22))
+        self.plotButton.grid(row=1, column=1, ipadx=52, ipady=6)
 
         self.HRFrame = Frame(self, height = 100, width = 200, highlightbackground = "gray", highlightthickness = 2)
-        self.HRFrame.grid(row=1, column=1)
+        self.HRFrame.grid(row=2, column=1, padx=70)
 
         self.HRLabel = Label(self.HRFrame, text="Puls:", font=("Sergoe UI", 30))
         self.HRLabel.grid(row=0, column=0, padx=20, pady=20)
@@ -247,16 +267,13 @@ class EKGView(Frame):
         self.HRValueLabel.grid(row=0, column=1, padx=20, pady=20)
 
         self.button = tk.Button(self, text="Se data for ny patient", bg="white", font=("Segoe UI",14))
-        self.button.grid(row=2, column=1, ipadx=15, ipady=5)
+        self.button.grid(row=3, column=1, ipadx=15, ipady=5)
 
-        self.EKGFrame = Frame(self, height=300, width = 500, bg="white")
-        self.EKGFrame.grid(row=1, column=0, rowspan=2)
+        self.EKGFrame = Frame(self, height=300, width = 500)
+        self.EKGFrame.grid(row=1, column=0, rowspan=3, sticky=E)
 
-        self.space = Label(self, text="  ", font=("Segoe UI",30))
-        self.space.grid(row=3, column=0)
-
-        self.plotButton = tk.Button(self, text="Vis EKG", bg="white", font=("Segoe UI",14))
-        self.plotButton.grid(row=4, column=0, ipadx=15, ipady=5)
+        self.space = Label(self, text="  ", font=("Segoe UI",10))
+        self.space.grid(row=4, column=0)
 
 class Graph:
     def __init__(self, frame, queue):
@@ -271,8 +288,13 @@ class Graph:
     def plotGraph(self):    
         while True:
             self.yar = self.queue.get()
+            self.yar = [eval(i) for i in self.yar]
             self.ax.clear()
-            x = list(range(1, 601))
+            self.ax.set_xlabel("Måling")
+            self.ax.set_ylabel("mV")
+            self.ax.set_yticks([0.0045, 0.005, 0.0055, 0.006, 0.0065])
+            self.ax.set_ylim(bottom = 0.0044, top = 0.0065, auto=False)
+            x = list(range(1, 275))
             y = self.yar
             self.ax.plot(x,y)
             self.canvas.draw()
