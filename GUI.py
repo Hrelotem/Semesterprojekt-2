@@ -74,9 +74,6 @@ class Database:
         self.Q1 = queue1
         self.Q2 = queue2
 
-    #Funktionen kan godt fetche, når man udkommenterer den del af koden, der lægger værdier i databasen,  
-    #og kører programmet, når der er værdier i databasen på forhånd.
-
     def run(self):
         try:
             self.connection1 = sqlite3.connect("PatientData.db")
