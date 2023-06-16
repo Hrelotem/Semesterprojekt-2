@@ -23,48 +23,58 @@ import serial
 class Buffer:
     def __init__(self):
         self.list = []
-        self.Amount = 274
+        self.Amount = 40
 
-class Sensor:
+class Sensor:  
     def __init__(self, queue):
         self.ser = serial.Serial('COM3',38400,timeout=1)
         self.buffer = Buffer()
         self.queue = queue
-      #  self.infile = open("C:\\Users\\Amanda\\OneDrive\\Dokumenter\\Universitet\\01. Sundhedsteknologi\\Semesterprojekt 2\\Testmålinger.txt", "r")
+        notReady = True #Start på protokol
+        print("Start")
+        time.sleep(1)
+        while notReady:
+            data = self.ser.read()
+            data = data.decode()
+            print(data)
+            if data == "K":
+                pyReady = "R"
+                pySend = pyReady.encode()
+                self.ser.write(pySend)
+                notReady = False
 
     def run(self):
         while True:
-            self.data = round(random.random()*10)
             self.data = self.ser.readline().decode().strip('\r\n')
             if len(self.data) > 0:
                 self.buffer.list.append(int(self.data))
-                self.buffer.list.append(self.data)
                 time.sleep(0.01)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
                 if len(self.buffer.list) == self.buffer.Amount:
-                    self.queue.put(self.buffer)
+                    self.bufferlist = self.buffer.list
+                    self.queue.put(self.bufferlist)
                     self.buffer = Buffer()
     
-    """Nedenstående funktion simulerer tilfældige værdier
-        def run(self):
-        while True:
-            self.data = round(random.random()*10)
-            self.buffer.list.append(self.data)
-            time.sleep(0.001)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
-            if len(self.buffer.list) == self.buffer.Amount:
-                self.bufferlist = self.buffer.list
-                self.queue.put(self.bufferlist)
-                self.buffer = Buffer()"""
+    #Nedenstående funktion simulerer tilfældige værdier
+     #   def run(self):
+      #  while True:
+       #     self.data = round(random.random()*10)
+        #    self.buffer.list.append(self.data)
+         #   time.sleep(0.001)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
+          #  if len(self.buffer.list) == self.buffer.Amount:
+           #     self.bufferlist = self.buffer.list
+            #    self.queue.put(self.bufferlist)
+             #   self.buffer = Buffer()
 
-    """def run(self):
-        for aline in self.infile:
-            value = aline.split()
-            value = value[0]
-            self.buffer.list.append(value)
-            time.sleep(0.01)
-            if len(self.buffer.list) == self.buffer.Amount:
-                self.bufferlist = self.buffer.list
-                self.queue.put(self.bufferlist)
-                self.buffer = Buffer()"""
+    #def run(self):
+     #   for aline in self.infile:
+      #      value = aline.split()
+       #     value = value[0]
+        #    self.buffer.list.append(value)
+         #   time.sleep(0.01)
+          #  if len(self.buffer.list) == self.buffer.Amount:
+           #     self.bufferlist = self.buffer.list
+            #    self.queue.put(self.bufferlist)
+             #   self.buffer = Buffer()
 
     def calculateHR():
         pass
@@ -289,13 +299,12 @@ class Graph:
     def plotGraph(self):    
         while True:
             self.yar = self.queue.get()
-            self.yar = [eval(i) for i in self.yar]
             self.ax.clear()
             self.ax.set_xlabel("Måling")
             self.ax.set_ylabel("mV")
-            self.ax.set_yticks([0.0045, 0.005, 0.0055, 0.006, 0.0065])
-            self.ax.set_ylim(bottom = 0.0044, top = 0.0065, auto=False)
-            x = list(range(1, 275))
+            #self.ax.set_yticks([0.0045, 0.005, 0.0055, 0.006, 0.0065])
+            #self.ax.set_ylim(bottom = 0.0044, top = 0.0065, auto=False)
+            x = list(range(1, 41))
             y = self.yar
             self.ax.plot(x,y)
             self.canvas.draw()
