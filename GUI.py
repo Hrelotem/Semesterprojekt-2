@@ -23,62 +23,63 @@ import serial
 class Buffer:
     def __init__(self):
         self.list = []
-        self.Amount = 40
+        self.Amount = 274
 
 class Sensor:  
     def __init__(self, queue):
-        self.ser = serial.Serial('COM3',38400,timeout=1)
+        #self.ser = serial.Serial('COM3',38400,timeout=1)
         self.buffer = Buffer()
         self.queue = queue
-        notReady = True #Start på protokol
-        print("Start")
-        time.sleep(1)
-        while notReady:
-            data = self.ser.read()
-            data = data.decode()
-            print(data)
-            if data == "K":
-                pyReady = "R"
-                pySend = pyReady.encode()
-                self.ser.write(pySend)
-                notReady = False
+        self.infile = open("C:\\Users\\Alexander\\OneDrive\\Skrivebord\\SemesterProjekt 2\\Testmålinger.txt","r")
+        self.value = 0.004
+        self.diffTime = 1
+        #notReady = True #Start på protokol
+        #print("Start")
+        #time.sleep(1)
+        #while notReady:
+         #   data = self.ser.read()
+          #  data = data.decode()
+           # print(data)
+            #if data == "K":
+             #   pyReady = "R"
+              #  pySend = pyReady.encode()
+               # self.ser.write(pySend)
+                #notReady = False
+
+#    def run(self):
+ #       while True:
+  #          self.data = self.ser.readline().decode().strip('\r\n')
+   #         if len(self.data) > 0:
+    #            self.buffer.list.append(int(self.data))
+     #           time.sleep(0.01)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
+      #          if len(self.buffer.list) == self.buffer.Amount:
+       #             self.bufferlist = self.buffer.list
+        #            self.queue.put(self.bufferlist)
+         #           self.buffer = Buffer()
+    
 
     def run(self):
-        while True:
-            self.data = self.ser.readline().decode().strip('\r\n')
-            if len(self.data) > 0:
-                self.buffer.list.append(int(self.data))
-                time.sleep(0.01)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
-                if len(self.buffer.list) == self.buffer.Amount:
-                    self.bufferlist = self.buffer.list
-                    self.queue.put(self.bufferlist)
-                    self.buffer = Buffer()
-    
-    #Nedenstående funktion simulerer tilfældige værdier
-     #   def run(self):
-      #  while True:
-       #     self.data = round(random.random()*10)
-        #    self.buffer.list.append(self.data)
-         #   time.sleep(0.001)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
-          #  if len(self.buffer.list) == self.buffer.Amount:
-           #     self.bufferlist = self.buffer.list
-            #    self.queue.put(self.bufferlist)
-             #   self.buffer = Buffer()
+        for aline in self.infile:
+            self.value = aline.split()
+            self.value = float(self.value[0])
+            self.buffer.list.append(self.value)
+            if len(self.buffer.list) == self.buffer.Amount:
+                self.bufferlist = self.buffer.list
+                self.queue.put(self.bufferlist)
+                self.buffer = Buffer()
 
-    #def run(self):
-     #   for aline in self.infile:
-      #      value = aline.split()
-       #     value = value[0]
-        #    self.buffer.list.append(value)
-         #   time.sleep(0.01)
-          #  if len(self.buffer.list) == self.buffer.Amount:
-           #     self.bufferlist = self.buffer.list
-            #    self.queue.put(self.bufferlist)
-             #   self.buffer = Buffer()
-
-    def calculateHR():
-        pass
-        #Det er formodentlig nemmest at beregne pulsen i denne klasse
+            self.threshold = 0.0055
+            self.obj = time.gmtime(0)
+            self.epoch = time.asctime(self.obj)
+            self.curr_time = round(time.time()*1000)
+            if self.value > self.threshold:
+                time.sleep(0.1)
+                self.newCurrTime = round(time.time()*1000)
+                self.diffTime = self.newCurrTime-self.curr_time
+                self.curr_time = self.newCurrTime           
+                self.pulse = 6000/self.diffTime
+                self.pulse = round(self.pulse)
+                print("Puls: ", self.pulse)
 
 class Queue:
     def __init__(self):
@@ -123,7 +124,7 @@ class Database:
 
             while True:
                 dataToDatabase = self.Q1.get()
-                print(dataToDatabase)
+                #print(dataToDatabase)
                 if dataToDatabase != None:
                     query = "INSERT INTO EKGTable (Value) VALUES"
                     for i in range(len(dataToDatabase)):
@@ -273,7 +274,7 @@ class EKGView(Frame):
         self.HRLabel.grid(row=0, column=0, padx=20, pady=20)
 
         self.HRValue=tk.StringVar()
-        self.HRValue.set("70")
+        self.HRValue.set("10")
         self.HRValueLabel = Label(self.HRFrame, text="60", font=("Sergoe UI", 30), textvariable=self.HRValue)
         self.HRValueLabel.grid(row=0, column=1, padx=20, pady=20)
 
@@ -299,22 +300,24 @@ class Graph:
     def plotGraph(self):    
         while True:
             self.yar = self.queue.get()
+            #self.yar = [eval(i) for i in self.yar]
             self.ax.clear()
             self.ax.set_xlabel("Måling")
             self.ax.set_ylabel("mV")
-            #self.ax.set_yticks([0.0045, 0.005, 0.0055, 0.006, 0.0065])
-            #self.ax.set_ylim(bottom = 0.0044, top = 0.0065, auto=False)
-            x = list(range(1, 41))
+            self.ax.set_yticks([0.0045, 0.005, 0.0055, 0.006, 0.0065])
+            self.ax.set_ylim(bottom = 0.0044, top = 0.0065, auto=False)
+            x = list(range(1, 275))
             y = self.yar
             self.ax.plot(x,y)
             self.canvas.draw()
 
 class Controller:
-    def __init__(self, model, view, queue):
+    def __init__(self, model, view, queue, sensor):
         self.model = model
         self.view = view
         self.queue = queue
-        self.ekgController = EKGController(model, view, queue)
+        self.sensor = sensor
+        self.ekgController = EKGController(model, view, queue, sensor)
         self.patientController = PatientController(model, view)         
 
     def start(self):
@@ -341,10 +344,11 @@ class PatientController:
             self.view.showPage("EKG")
 
 class EKGController:
-    def __init__(self, model, view, queue):
+    def __init__(self, model, view, queue, sensor):
         self.model = model
         self.view = view
         self.queue = queue
+        self.sensor = sensor
         self.EKGFrame = self.view.frames["EKG"]
         self.graph = Graph(self.EKGFrame.EKGFrame, self.queue)
         self._bind1()
@@ -362,20 +366,27 @@ class EKGController:
     def startPlotGraph(self):
         t = Thread(target=self.graph.plotGraph)
         t.start()
+        t1 = Thread(target=self.showPulse)
+        t1.start()
+    
+    def showPulse(self):
+        while True:
+            self.EKGFrame.HRValue.set(self.sensor.pulse)
 
 def Main():
     Q1 = Queue()
     Q2 = Queue()
     sensor = Sensor(Q1)
-    database = Database(Q1, Q2)
     t1 = threading.Thread(target=sensor.run)
     t1.start()
+    database = Database(Q1, Q2)
     t2 = threading.Thread(target=database.run)
     t2.start()
     model = Model()
     view = View()
-    controller = Controller(model, view, Q2)
+    controller = Controller(model, view, Q2, sensor)
     controller.start()
+
 
 if __name__ == "__main__":
     Main()
