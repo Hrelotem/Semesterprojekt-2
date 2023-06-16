@@ -27,21 +27,22 @@ class Buffer:
 
 class Sensor:
     def __init__(self, queue):
+        self.ser = serial.Serial('COM3',38400,timeout=1)
         self.buffer = Buffer()
         self.queue = queue
-        self.infile = open("C:\\Users\\Amanda\\OneDrive\\Dokumenter\\Universitet\\01. Sundhedsteknologi\\Semesterprojekt 2\\Testmålinger.txt", "r")
+      #  self.infile = open("C:\\Users\\Amanda\\OneDrive\\Dokumenter\\Universitet\\01. Sundhedsteknologi\\Semesterprojekt 2\\Testmålinger.txt", "r")
 
-    """def run(self):
+    def run(self):
         while True:
             self.data = round(random.random()*10)
-            self.data = ser.readline().decode().strip('\r\n')
+            self.data = self.ser.readline().decode().strip('\r\n')
             if len(self.data) > 0:
                 self.buffer.list.append(int(self.data))
                 self.buffer.list.append(self.data)
                 time.sleep(0.01)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
                 if len(self.buffer.list) == self.buffer.Amount:
                     self.queue.put(self.buffer)
-                    self.buffer = Buffer()"""
+                    self.buffer = Buffer()
     
     """Nedenstående funktion simulerer tilfældige værdier
         def run(self):
@@ -54,7 +55,7 @@ class Sensor:
                 self.queue.put(self.bufferlist)
                 self.buffer = Buffer()"""
 
-    def run(self):
+    """def run(self):
         for aline in self.infile:
             value = aline.split()
             value = value[0]
@@ -63,7 +64,7 @@ class Sensor:
             if len(self.buffer.list) == self.buffer.Amount:
                 self.bufferlist = self.buffer.list
                 self.queue.put(self.bufferlist)
-                self.buffer = Buffer()
+                self.buffer = Buffer()"""
 
     def calculateHR():
         pass
