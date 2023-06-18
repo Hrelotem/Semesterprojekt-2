@@ -30,9 +30,11 @@ class Sensor:
         #self.ser = serial.Serial('COM3',38400,timeout=1)
         self.buffer = Buffer()
         self.queue = queue
-        self.infile = open("C:\\Users\\Alexander\\OneDrive\\Skrivebord\\SemesterProjekt 2\\Testmålinger.txt","r")
+        #self.infile = open("C:\\Users\\Alexander\\OneDrive\\Skrivebord\\SemesterProjekt 2\\Testmålinger.txt","r")
+        self.infile = open("C:\\Users\\Amanda\\OneDrive\\Dokumenter\\Universitet\\01. Sundhedsteknologi\\Semesterprojekt 2\\Testmålinger.txt", "r")
         self.value = 0.004
         self.diffTime = 1
+        self.pulse = 00
         #notReady = True #Start på protokol
         #print("Start")
         #time.sleep(1)
@@ -59,27 +61,30 @@ class Sensor:
     
 
     def run(self):
+        self.curr_time = 0                                      #Det fucker med programmet at have denne linje heroppe
         for aline in self.infile:
             self.value = aline.split()
             self.value = float(self.value[0])
             self.buffer.list.append(self.value)
+            time.sleep(0.01)
             if len(self.buffer.list) == self.buffer.Amount:
                 self.bufferlist = self.buffer.list
                 self.queue.put(self.bufferlist)
                 self.buffer = Buffer()
 
             self.threshold = 0.0055
-            self.obj = time.gmtime(0)
-            self.epoch = time.asctime(self.obj)
-            self.curr_time = round(time.time()*1000)
+            #self.curr_time = 0 #round(time.time()*1000)
+            print(self.curr_time)
+
             if self.value > self.threshold:
                 time.sleep(0.1)
                 self.newCurrTime = round(time.time()*1000)
-                self.diffTime = self.newCurrTime-self.curr_time
+                print(self.newCurrTime)
+                self.diffTime = int(self.newCurrTime)-int(self.curr_time)
                 self.curr_time = self.newCurrTime           
                 self.pulse = 6000/self.diffTime
                 self.pulse = round(self.pulse)
-                print("Puls: ", self.pulse)
+                #print("Puls: ", self.pulse)
 
 class Queue:
     def __init__(self):
@@ -105,30 +110,39 @@ class Database:
     def __init__(self, queue1, queue2):
         self.Q1 = queue1
         self.Q2 = queue2
+        self.patientID = 1
+        self.patientUnknown = True
 
     def run(self):
         try:
             self.connection = sqlite3.connect("PatientData.db")
             self.cursor = self.connection.cursor()
+
+            self.dropPatientTable = "DROP TABLE IF EXISTS PatientTable"
+            self.cursor.execute(self.dropPatientTable)               
+            self.createPatientTable = "CREATE TABLE PatientTable(ID INTEGER PRIMARY KEY AUTOINCREMENT, CPR INTEGER, Name STRING)"
+            self.cursor.execute(self.createPatientTable)
+
+            self.patientQuery = "INSERT INTO PatientTable (CPR, Name) VALUES(0, 'O')"
+            self.cursor.execute(self.patientQuery)
+            self.connection.commit()
+
+            self.cursor.execute("PRAGMA foreign_keys = ON")
+
             self.dropEKGTable = "DROP TABLE IF EXISTS EKGTable"
             self.cursor.execute(self.dropEKGTable)                
-            self.createEKGTable = "CREATE TABLE EKGTable(ID INTEGER PRIMARY KEY AUTOINCREMENT, Value INTEGER)"
+            #self.createEKGTable = "CREATE TABLE EKGTable(ID INTEGER PRIMARY KEY AUTOINCREMENT, Value INTEGER)"
+            self.createEKGTable = "CREATE TABLE EKGTable(ID INTEGER PRIMARY KEY AUTOINCREMENT, Value INTEGER, PatientID INTEGER, FOREIGN KEY(PatientID) REFERENCES PatientTable(ID))"
             self.cursor.execute(self.createEKGTable)
-
-            #Nedenstående er Sheilas tilføjelser af kode. Rykket sammen, fordi Amanda har ryddet op i sin del.
-            self.dropPatientTable = "DROP TABLE IF EXISTS PatientTable"
-            self.cursor.execute(self.dropPatientTable)                     
-            self.createPatientTable = "CREATE TABLE PatientTable(ID INTEGER PRIMARY KEY, Name VARCHAR, CPR INTEGER)"
-            self.cursor.execute(self.createPatientTable)                 
-            self.insertPatient = "INSERT INTO Patient VALUES ({},'{}',{})"
 
             while True:
                 dataToDatabase = self.Q1.get()
                 #print(dataToDatabase)
                 if dataToDatabase != None:
-                    query = "INSERT INTO EKGTable (Value) VALUES"
+                    query = "INSERT INTO EKGTable (Value, PatientID) VALUES"
                     for i in range(len(dataToDatabase)):
-                        query += "(" + str(dataToDatabase[i]) + ")"
+                        #query += "(" + str(dataToDatabase[i]) + ")"
+                        query += "(" + str(dataToDatabase[i]) + "," + str(self.patientID) + ")"
                         if i < len(dataToDatabase)-1: 
                             query += ","
                     self.cursor.execute(query)
@@ -142,23 +156,62 @@ class Database:
             self.cursor.close()
             self.connection.close()
 
+    def savePatientData(self, cpr, name):
+        try:
+            self.connection1 = sqlite3.connect("PatientData.db")
+            self.cursor1 = self.connection1.cursor()
+            self.cpr = cpr
+            self.name = name
+
+            if self.patientUnknown:
+                deleteQuery1 = "DELETE from EKGTable where PatientID = 1"
+                deleteQuery2 = "DELETE from PatientTable where CPR = 0"
+                self.cursor1.execute(deleteQuery1)
+                self.cursor1.execute(deleteQuery2)
+                self.connection1.commit()
+                print("Successfully deleted")
+                self.patientUnknown = False
+
+            self.patientQuery = "INSERT INTO PatientTable (CPR, Name) VALUES(" + str(self.cpr) + "," + "'" + str(self.name) + "'" + ")"
+            self.cursor1.execute(self.patientQuery)
+            self.connection1.commit()
+                
+        except sqlite3.Error as e:
+            print("Fejl: ", e)
+
+        finally:
+            self.cursor1.close()
+            self.connection1.close()
+    
+    def updatePatientID(self, id):
+        self.patientID = id
+
 class Model:
-    def __init__(self):
+    def __init__(self, database):
         self.valid = None
         self.patientCPRs = []
         self.returnedBuffer = []
+        self.database = database
 
     def authPatient(self, data):                                        #OBS! Funktion som validerer, at CPR består af 1 tal. SKAL ÆNDRES TIL 10!
         try:
             int(data["cpr"])
             if (len(data["cpr"]) == 1):
                 self.valid = "Yes"
-                if (data["cpr"] not in self.patientCPRs):               #hvis cpr ikke er i listen self.patientCPRs, tilføjes det
-                    self.patientCPRs.append(data["cpr"])
             else:
                 self.valid = "No"
         except:
-            self.valid = "No"       
+            self.valid = "No"
+
+    def savePatient(self, data):
+        if (data["cpr"] not in self.patientCPRs):
+            self.patientCPRs.append(data["cpr"])
+            id = self.patientCPRs.index(data["cpr"]) + 2
+            self.database.updatePatientID(id)
+            self.database.savePatientData(data["cpr"], data["name"]) 
+        else:
+            id = self.patientCPRs.index(data["cpr"]) + 2
+            self.database.updatePatientID(id)
 
 class Root(Tk):
     def __init__(self):
@@ -297,7 +350,7 @@ class Graph:
         self.canvas.get_tk_widget().grid(row=0, column=0)
         self.yar = []
 
-    def plotGraph(self):    
+    def plotGraph(self):  
         while True:
             self.yar = self.queue.get()
             #self.yar = [eval(i) for i in self.yar]
@@ -317,19 +370,15 @@ class Controller:
         self.view = view
         self.queue = queue
         self.sensor = sensor
-        self.ekgController = EKGController(model, view, queue, sensor)
-        self.patientController = PatientController(model, view)         
+        self.patientFrame = self.view.frames["Patient"]
+        self.EKGFrame = self.view.frames["EKG"]      
+        self._bind()   
+        self.graph = Graph(self.EKGFrame.EKGFrame, self.queue)
+        self._bind1()
+        self._bind2()
 
     def start(self):
         self.view.startMainloop()
-
-class PatientController:
-    def __init__(self, model, view):
-        self.model = model
-        self.view = view
-        self.patientFrame = self.view.frames["Patient"]
-        self.EKGFrame = self.view.frames["EKG"]
-        self._bind()
     
     def _bind(self):
         self.patientFrame.button.config(command=self.showEKGPage)
@@ -340,20 +389,11 @@ class PatientController:
         data = {"cpr": cpr, "name": name}
         self.model.authPatient(data)
         if self.model.valid == "Yes":
+            self.model.savePatient(data)
             self.EKGFrame.patientName.set("EKG for " + name)
+            self.graph = Graph(self.EKGFrame.EKGFrame, self.queue)
             self.view.showPage("EKG")
 
-class EKGController:
-    def __init__(self, model, view, queue, sensor):
-        self.model = model
-        self.view = view
-        self.queue = queue
-        self.sensor = sensor
-        self.EKGFrame = self.view.frames["EKG"]
-        self.graph = Graph(self.EKGFrame.EKGFrame, self.queue)
-        self._bind1()
-        self._bind2()
-    
     def _bind1(self):
         self.EKGFrame.button.config(command=self.showPatientPage)
     
@@ -364,8 +404,8 @@ class EKGController:
         self.EKGFrame.plotButton.config(command=self.startPlotGraph)
 
     def startPlotGraph(self):
-        t = Thread(target=self.graph.plotGraph)
-        t.start()
+        self.t = Thread(target=self.graph.plotGraph)
+        self.t.start()
         t1 = Thread(target=self.showPulse)
         t1.start()
     
@@ -382,7 +422,7 @@ def Main():
     database = Database(Q1, Q2)
     t2 = threading.Thread(target=database.run)
     t2.start()
-    model = Model()
+    model = Model(database)
     view = View()
     controller = Controller(model, view, Q2, sensor)
     controller.start()
