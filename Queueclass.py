@@ -2,16 +2,20 @@ from threading import Condition
 import threading
 import random
 import time
+from Bufferclass import Buffer
+
 
 class Queue:
     def __init__(self):
         self.queue = []
+        self.testqueue = []
         self._lock = Condition()
         self.bufferCount = 0
     
-    def put(self, bufferlist):
+    def put(self, buffer):
         with self._lock:
-            self.queue.append(bufferlist)           
+            self.queue.append(buffer)
+            self.testqueue.append(buffer)
             self.bufferCount += 1
             if self.bufferCount == 1:
                 self._lock.notify()
@@ -26,34 +30,33 @@ class Queue:
 class QueueTest:
     def __init__(self):
         self.queue = Queue()
-        self.buffer = []
-        self.totalQueue = []                            #Kø med alle buffere, som produceres og sendes til kø-klassen af put
-        self.totalReturnedQueue = []                    #Kø med alle buffere, som returneres fra kø-klassen med get
+        self.buffer = Buffer()
+        self.returnedQueue = []
+        self.test()
 
     def sensor(self):
         while True:
-            for i in range(600):                          #simulering af sensorværdier, der lægges 600 ad gangen i buffere
+            for i in range(10):
                 self.data = round(random.random()*10)
-                self.buffer.append(self.data)
-                time.sleep(0.001)
-            self.queue.put(self.buffer)
-            self.totalQueue.append(self.buffer)
-            self.buffer = []
+                self.buffer.list.append(self.data)
+            self.queue.put(self.buffer.list)
+            self.buffer = Buffer()
+            time.sleep(1)
 
     def database(self):
         while True:
-            self.totalReturnedQueue.append(self.queue.get())
+            self.returnedQueue.append(self.queue.get())
+            time.sleep(0.1)
 
     def test(self):
         t1 = threading.Thread(target=self.sensor)
         t2 = threading.Thread(target=self.database)
         t1.start(), t2.start()
-        time.sleep(60)                                  #programmet testes i 60 sekunder
-        if self.totalQueue == self.totalReturnedQueue and self.queue.bufferCount == 0:
+        time.sleep(60)
+        if self.queue.testqueue == self.returnedQueue and self.queue.bufferCount == 0:
             print("Program is working")
         else:
             print("Error in program")
-
 
 unittest = QueueTest()
 unittest.test()
