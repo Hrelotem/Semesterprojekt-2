@@ -23,11 +23,11 @@ import serial
 class Buffer:
     def __init__(self):
         self.list = []
-        self.Amount = 274
+        self.Amount = 400
 
 class Sensor:  
     def __init__(self, queue):
-        #self.ser = serial.Serial('COM3',38400,timeout=1)
+        self.ser = serial.Serial('COM3',38400,timeout=1)
         self.buffer = Buffer()
         self.queue = queue
         #self.infile = open("C:\\Users\\Alexander\\OneDrive\\Skrivebord\\SemesterProjekt 2\\Testmålinger.txt","r")
@@ -35,56 +35,41 @@ class Sensor:
         self.value = 0.004
         self.diffTime = 1
         self.pulse = 00
-        #notReady = True #Start på protokol
-        #print("Start")
-        #time.sleep(1)
-        #while notReady:
-         #   data = self.ser.read()
-          #  data = data.decode()
-           # print(data)
-            #if data == "K":
-             #   pyReady = "R"
-              #  pySend = pyReady.encode()
-               # self.ser.write(pySend)
-                #notReady = False
-
-#    def run(self):
- #       while True:
-  #          self.data = self.ser.readline().decode().strip('\r\n')
-   #         if len(self.data) > 0:
-    #            self.buffer.list.append(int(self.data))
-     #           time.sleep(0.01)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
-      #          if len(self.buffer.list) == self.buffer.Amount:
-       #             self.bufferlist = self.buffer.list
-        #            self.queue.put(self.bufferlist)
-         #           self.buffer = Buffer()
-    
+        notReady = True #Start på protokol
+        print("Start")
+        time.sleep(1)
+        while notReady:
+            data = self.ser.read()
+            data = data.decode()
+            print(data)
+            if data == "K":
+                pyReady = "R"
+                pySend = pyReady.encode()
+                self.ser.write(pySend)
+                notReady = False
 
     def run(self):
-        self.curr_time = 0                                      #Det fucker med programmet at have denne linje heroppe
-        for aline in self.infile:
-            self.value = aline.split()
-            self.value = float(self.value[0])
-            self.buffer.list.append(self.value)
-            time.sleep(0.01)
-            if len(self.buffer.list) == self.buffer.Amount:
-                self.bufferlist = self.buffer.list
-                self.queue.put(self.bufferlist)
-                self.buffer = Buffer()
+        while True:
+            self.data = self.ser.readline().decode().strip('\r\n')
+            if len(self.data) > 0:
+                self.buffer.list.append(int(self.data))
+                time.sleep(0.01)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
+                if len(self.buffer.list) == self.buffer.Amount:
+                    self.bufferlist = self.buffer.list
+                    self.queue.put(self.bufferlist)
+                    self.buffer = Buffer()
+    
 
-            self.threshold = 0.0055
-            #self.curr_time = 0 #round(time.time()*1000)
-            print(self.curr_time)
-
-            if self.value > self.threshold:
-                time.sleep(0.1)
-                self.newCurrTime = round(time.time()*1000)
-                print(self.newCurrTime)
-                self.diffTime = int(self.newCurrTime)-int(self.curr_time)
-                self.curr_time = self.newCurrTime           
-                self.pulse = 6000/self.diffTime
-                self.pulse = round(self.pulse)
-                #print("Puls: ", self.pulse)
+    #def run(self):
+    #    for aline in self.infile:
+    #        self.value = aline.split()
+    #        self.value = float(self.value[0])
+    #        self.buffer.list.append(self.value)
+    #        time.sleep(0.01)
+    #        if len(self.buffer.list) == self.buffer.Amount:
+    #            self.bufferlist = self.buffer.list
+    #            self.queue.put(self.bufferlist)
+    #            self.buffer = Buffer()
 
 class Queue:
     def __init__(self):
@@ -353,13 +338,12 @@ class Graph:
     def plotGraph(self):  
         while True:
             self.yar = self.queue.get()
-            #self.yar = [eval(i) for i in self.yar]
             self.ax.clear()
             self.ax.set_xlabel("Måling")
             self.ax.set_ylabel("mV")
-            self.ax.set_yticks([0.0045, 0.005, 0.0055, 0.006, 0.0065])
-            self.ax.set_ylim(bottom = 0.0044, top = 0.0065, auto=False)
-            x = list(range(1, 275))
+            #self.ax.set_yticks([0.0045, 0.005, 0.0055, 0.006, 0.0065])
+            #self.ax.set_ylim(bottom = 0.0044, top = 0.0065, auto=False)
+            x = list(range(1, 401))
             y = self.yar
             self.ax.plot(x,y)
             self.canvas.draw()
