@@ -51,7 +51,7 @@ class Sensor:
                 if len(self.data) > 0:
                     self.data = int(self.data)
                     self.buffer.list.append(self.data)
-                    time.sleep(0.01)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
+                    time.sleep(0.01)                                         
                     if len(self.buffer.list) == self.buffer.Amount:
                         self.bufferlist = self.buffer.list
                         self.queue.put(self.bufferlist)
@@ -205,10 +205,10 @@ class Model:
         self.returnedBuffer = []
         self.database = database
 
-    def authPatient(self, data):                                        #OBS! Funktion som validerer, at CPR består af 1 tal. SKAL ÆNDRES TIL 10!
+    def authPatient(self, data):                                        
         try:
             int(data["cpr"])
-            if (len(data["cpr"]) == 1):
+            if (len(data["cpr"]) == 10):
                 self.valid = "Yes"
             else:
                 self.valid = "No"
