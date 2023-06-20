@@ -3,22 +3,13 @@ import tkinter as tk
 from tkinter import *
 import time
 import datetime as dt
-from random import randrange
 from threading import Thread, Condition
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import numpy as np
 import matplotlib.figure
-import random
 import threading
 import sqlite3
 import serial
-
-#Tre relevante steder at kende - her ændres bufferstørrelse + hastighed, hvormed simulerede værdier hentes
-#1) buffer-klassens amount
-#2) sensor-klassens time.sleep i run-metoden
-#3) graf-klassens plotgraph-metode
-
-#Obs. I den endelige kode kan nogle af de importerede libraries nok fjernes.
 
 class Buffer:
     def __init__(self):
@@ -30,11 +21,17 @@ class Sensor:
         self.ser = serial.Serial('COM3',38400,timeout=1)
         self.buffer = Buffer()
         self.queue = queue
+        self.f = 0
+        self.f1 = 0
+        self.t = 0
+        self.f2 = 0
+        self.s = 0
+        self.count = 0
+        self.max = 0  
+        self.threshold = 0
+        self.HR = 0
         #self.infile = open("C:\\Users\\Alexander\\OneDrive\\Skrivebord\\SemesterProjekt 2\\Testmålinger.txt","r")
-        self.infile = open("C:\\Users\\Amanda\\OneDrive\\Dokumenter\\Universitet\\01. Sundhedsteknologi\\Semesterprojekt 2\\Testmålinger.txt", "r")
-        self.value = 0.004
-        self.diffTime = 1
-        self.pulse = 00
+        #self.infile = open("C:\\Users\\Amanda\\OneDrive\\Dokumenter\\Universitet\\01. Sundhedsteknologi\\Semesterprojekt 2\\Testmålinger.txt", "r")
         notReady = True #Start på protokol
         print("Start")
         time.sleep(1)
@@ -49,17 +46,50 @@ class Sensor:
                 notReady = False
 
     def run(self):
-        while True:
-            self.data = self.ser.readline().decode().strip('\r\n')
-            if len(self.data) > 0:
-                self.buffer.list.append(int(self.data))
-                time.sleep(0.01)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
-                if len(self.buffer.list) == self.buffer.Amount:
-                    self.bufferlist = self.buffer.list
-                    self.queue.put(self.bufferlist)
-                    self.buffer = Buffer()
-    
-
+            while True:
+                self.data = self.ser.readline().decode().strip('\r\n')
+                if len(self.data) > 0:
+                    self.data = int(self.data)
+                    self.buffer.list.append(self.data)
+                    time.sleep(0.01)                                         #Denne skal formodentlig fjernes/ændres i endelig kode
+                    if len(self.buffer.list) == self.buffer.Amount:
+                        self.bufferlist = self.buffer.list
+                        self.queue.put(self.bufferlist)
+                        self.buffer = Buffer()
+                    if self.s >= 2:
+                        self.t = self.data - self.f
+                        self.f2 = self.t - self.f1
+                        self.f1 = self.t
+                        self.f = self.data
+                        if self.s == 2:
+                            self.s = 3
+                    elif self.s == 0:
+                        self.f = self.data
+                        self.s = 1
+                    elif self.s == 1:
+                        self.f1 = self.data - self.f
+                        self.f = self.data
+                        self.s = 2
+                        self.max = self.f1  
+                    if self.s == 3:
+                        if self.count < 1000:
+                            if self.max < self.f1:
+                                self.max = self.f1
+                                print(self.s, self.f, self.f1, self.f2, self.max, self.count)
+                            self.count += 1
+                        else:
+                            self.s = 4
+                            self.count = 0
+                            self.threshold = self.max * 0.60
+                            print(self.threshold)
+                    if self.s == 4:
+                        if self.f1 > self.threshold and self.f2 <= 0 and self.count > 30:
+                            self.HR = (400/self.count)*60
+                            print(self.s, self.f, self.f1, self.f2, self.count)
+                            print("Puls: ", self.HR)
+                            self.count = 0
+                        else:
+                            self.count += 1
     #def run(self):
     #    for aline in self.infile:
     #        self.value = aline.split()
@@ -116,17 +146,14 @@ class Database:
 
             self.dropEKGTable = "DROP TABLE IF EXISTS EKGTable"
             self.cursor.execute(self.dropEKGTable)                
-            #self.createEKGTable = "CREATE TABLE EKGTable(ID INTEGER PRIMARY KEY AUTOINCREMENT, Value INTEGER)"
             self.createEKGTable = "CREATE TABLE EKGTable(ID INTEGER PRIMARY KEY AUTOINCREMENT, Value INTEGER, PatientID INTEGER, FOREIGN KEY(PatientID) REFERENCES PatientTable(ID))"
             self.cursor.execute(self.createEKGTable)
 
             while True:
                 dataToDatabase = self.Q1.get()
-                #print(dataToDatabase)
                 if dataToDatabase != None:
                     query = "INSERT INTO EKGTable (Value, PatientID) VALUES"
                     for i in range(len(dataToDatabase)):
-                        #query += "(" + str(dataToDatabase[i]) + ")"
                         query += "(" + str(dataToDatabase[i]) + "," + str(self.patientID) + ")"
                         if i < len(dataToDatabase)-1: 
                             query += ","
@@ -341,8 +368,6 @@ class Graph:
             self.ax.clear()
             self.ax.set_xlabel("Måling")
             self.ax.set_ylabel("mV")
-            #self.ax.set_yticks([0.0045, 0.005, 0.0055, 0.006, 0.0065])
-            #self.ax.set_ylim(bottom = 0.0044, top = 0.0065, auto=False)
             x = list(range(1, 401))
             y = self.yar
             self.ax.plot(x,y)
@@ -395,7 +420,7 @@ class Controller:
     
     def showPulse(self):
         while True:
-            self.EKGFrame.HRValue.set(self.sensor.pulse)
+            self.EKGFrame.HRValue.set(round(self.sensor.HR))
 
 def Main():
     Q1 = Queue()
